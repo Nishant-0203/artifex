@@ -854,6 +854,113 @@ export interface TestImageData {
   format: string;
 }
 
+// Image Generation API Request/Response Types
+export interface TextToImageRequest {
+  prompt: string;
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
+  style?: 'realistic' | 'artistic' | 'anime' | 'digital-art' | 'photography';
+  quality?: 'standard' | 'hd';
+}
+
+export interface ImageToImageRequest {
+  prompt: string;
+  transformationType?: 'enhance' | 'stylize' | 'background-change' | 'object-removal';
+  strength?: number;
+}
+
+export interface MultiImageRequest {
+  prompt: string;
+  compositionType?: 'collage' | 'blend' | 'layered' | 'panorama';
+  layout?: 'grid' | 'horizontal' | 'vertical' | 'custom';
+}
+
+export interface RefineImageRequest {
+  prompt?: string;
+  refinementType?: 'upscale' | 'enhance-details' | 'color-correction' | 'lighting-adjustment';
+  adjustments?: {
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+    sharpness?: number;
+  };
+  preserveAspectRatio?: boolean;
+}
+
+export interface ImageGenerationResponse {
+  success: boolean;
+  data?: {
+    imageUrl: string;
+    imageId: string;
+    metadata: {
+      width: number;
+      height: number;
+      format: string;
+      size: number;
+      aspectRatio: string;
+      generationType: string;
+      processingTime: number;
+    };
+    usage: {
+      creditsUsed: number;
+      tokensConsumed: number;
+      quotaRemaining: number;
+    };
+  };
+  message?: string;
+}
+
+export interface GenerationHistoryResponse {
+  success: boolean;
+  data?: {
+    generations: ImageGeneration[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  };
+  message?: string;
+}
+
+export interface QuotaStatusResponse {
+  success: boolean;
+  data?: {
+    subscription: SubscriptionTier;
+    current: {
+      images: number;
+      credits: number;
+    };
+    limits: {
+      images: number;
+      credits: number;
+      fileSize: number;
+      maxDimensions: number;
+      multiImageCount: number;
+    };
+    resetDate: string;
+    usage: {
+      daily: number;
+      weekly: number;
+      monthly: number;
+    };
+  };
+  message?: string;
+}
+
+// Extended Request interfaces with file upload support
+export interface ImageUploadRequest extends Express.Request {
+  file?: Express.Multer.File;
+  files?: Express.Multer.File[];
+  user?: {
+    id: string;
+    subscriptionStatus?: string;
+  };
+  quotaInfo?: QuotaInfo;
+}
+
 // Rate Limiting Types
 export interface RateLimitConfig {
   windowMs: number;

@@ -51,6 +51,37 @@ export class InternalServerError extends AppError {
   }
 }
 
+// Image generation specific errors
+export class ImageGenerationError extends AppError {
+  constructor(message: string) {
+    super(message, 400);
+  }
+}
+
+export class FileUploadError extends AppError {
+  constructor(message: string) {
+    super(message, 400);
+  }
+}
+
+export class QuotaExceededError extends AppError {
+  constructor(message: string = 'Generation quota exceeded') {
+    super(message, 429);
+  }
+}
+
+export class InvalidImageError extends AppError {
+  constructor(message: string = 'Invalid image format or content') {
+    super(message, 400);
+  }
+}
+
+export class ImageProcessingError extends AppError {
+  constructor(message: string = 'Error processing image') {
+    super(message, 500);
+  }
+}
+
 // Handle MongoDB errors
 const handleMongoError = (error: any): AppError => {
   if (error.name === 'ValidationError') {
@@ -69,6 +100,40 @@ const handleMongoError = (error: any): AppError => {
   }
 
   return new InternalServerError('Database error occurred');
+};
+
+// Handle Multer file upload errors
+const handleMulterError = (error: any): AppError => {
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    return new FileUploadError('File size exceeds the allowed limit');
+  }
+  
+  if (error.code === 'LIMIT_FILE_COUNT') {
+    return new FileUploadError('Too many files uploaded');
+  }
+  
+  if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+    return new FileUploadError('Unexpected file field');
+  }
+  
+  return new FileUploadError('File upload error occurred');
+};
+
+// Handle image processing errors
+const handleImageError = (error: any): AppError => {
+  if (error.message?.includes('unsupported image format')) {
+    return new InvalidImageError('Unsupported image format. Please use JPEG, PNG, or WebP');
+  }
+  
+  if (error.message?.includes('image too small') || error.message?.includes('dimensions')) {
+    return new InvalidImageError('Image dimensions are invalid or too small');
+  }
+  
+  if (error.message?.includes('quota') || error.message?.includes('limit')) {
+    return new QuotaExceededError(error.message);
+  }
+  
+  return new ImageProcessingError('Error processing the image');
 };
 
 // Development error response
@@ -123,6 +188,17 @@ export const errorHandler = (
   // Handle MongoDB errors
   if (err.name === 'ValidationError' || err.name === 'CastError' || err.code === 11000) {
     error = handleMongoError(err);
+  }
+  
+  // Handle Multer file upload errors
+  else if (err.name === 'MulterError' || (err.code && ['LIMIT_FILE_SIZE', 'LIMIT_FILE_COUNT', 'LIMIT_UNEXPECTED_FILE'].includes(err.code))) {
+    error = handleMulterError(err);
+  }
+  
+  // Handle image processing and generation errors
+  else if (err.name === 'ImageGenerationError' || err.name === 'ImageProcessingError' || 
+           (err.message && (err.message.includes('image') || err.message.includes('quota') || err.message.includes('generation')))) {
+    error = handleImageError(err);
   }
 
   // Convert non-AppError to AppError

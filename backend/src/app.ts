@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import { v4 as uuid } from 'uuid';
 import { config } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -50,9 +51,12 @@ app.use(morgan('combined', {
   }
 }));
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware with increased limits for image uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Static file serving for generated images (optional)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Clerk authentication middleware
 app.use(clerkAuth);

@@ -135,9 +135,165 @@ backend/
 ### API Information
 - **GET** `/api/v1/` - API version and endpoint information
 
+### Image Generation API
+> **Authentication Required**: All image generation endpoints require valid Clerk authentication.
+
+#### Text-to-Image Generation
+- **POST** `/api/v1/generate/text-to-image` - Generate image from text prompt
+
+**Request Body:**
+```json
+{
+  "prompt": "A majestic sunset over mountains",
+  "aspectRatio": "16:9",
+  "style": "realistic",
+  "quality": "hd"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "imageUrl": "https://example.com/generated-image.jpg",
+    "imageId": "gen_123abc456def",
+    "metadata": {
+      "width": 1920,
+      "height": 1080,
+      "format": "jpeg",
+      "size": 245760,
+      "aspectRatio": "16:9",
+      "generationType": "text-to-image",
+      "processingTime": 3.2
+    },
+    "usage": {
+      "creditsUsed": 1,
+      "tokensConsumed": 150,
+      "quotaRemaining": 49
+    }
+  }
+}
+```
+
+#### Image-to-Image Transformation
+- **POST** `/api/v1/generate/image-to-image` - Transform existing image with text prompt
+
+**Request:** Multipart form data
+- `image`: Source image file (JPEG, PNG, WebP)
+- `prompt`: Text description for transformation
+- `transformationType`: "enhance" | "stylize" | "background-change" | "object-removal"
+- `strength`: Number (0.1 - 1.0) - transformation intensity
+
+**File Limits by Subscription:**
+- Free: 10MB max, 1024x1024px max
+- Plus: 20MB max, 2048x2048px max  
+- Pro: 50MB max, 4096x4096px max
+
+#### Multi-Image Composition
+- **POST** `/api/v1/generate/multi-image` - Compose multiple images into single output
+
+**Request:** Multipart form data
+- `images[]`: Array of source image files (2-10 images)
+- `prompt`: Composition description
+- `compositionType`: "collage" | "blend" | "layered" | "panorama"
+- `layout`: "grid" | "horizontal" | "vertical" | "custom"
+
+**File Count Limits by Subscription:**
+- Free: 3 images max
+- Plus: 5 images max
+- Pro: 10 images max
+
+#### Image Refinement
+- **POST** `/api/v1/generate/refine` - Refine existing image with detailed adjustments
+
+**Request:** Multipart form data
+- `image`: Source image file
+- `prompt`: Optional refinement description
+- `refinementType`: "upscale" | "enhance-details" | "color-correction" | "lighting-adjustment"
+- `adjustments`: Object with brightness, contrast, saturation, sharpness values
+- `preserveAspectRatio`: Boolean
+
+**Adjustments Object:**
+```json
+{
+  "brightness": 0.1,
+  "contrast": 0.05,
+  "saturation": -0.1,
+  "sharpness": 0.2
+}
+```
+
+#### Generation History
+- **GET** `/api/v1/generate/history` - Get user's generation history
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `limit`: Results per page (default: 20, max: 100)
+- `type`: Filter by generation type ("text-to-image" | "image-to-image" | "multi-image" | "refine")
+
+#### Quota Status
+- **GET** `/api/v1/generate/quota` - Get current quota and usage information
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "subscription": "plus",
+    "current": {
+      "images": 15,
+      "credits": 35
+    },
+    "limits": {
+      "images": 100,
+      "credits": 500,
+      "fileSize": 20971520,
+      "maxDimensions": 2048,
+      "multiImageCount": 5
+    },
+    "resetDate": "2024-02-01T00:00:00.000Z",
+    "usage": {
+      "daily": 5,
+      "weekly": 23,
+      "monthly": 15
+    }
+  }
+}
+```
+
+#### Error Responses
+
+**400 Bad Request:**
+```json
+{
+  "success": false,
+  "message": "Validation failed: prompt is required"
+}
+```
+
+**401 Unauthorized:**
+```json
+{
+  "success": false,
+  "message": "Authentication required"
+}
+```
+
+**429 Too Many Requests:**
+```json
+{
+  "success": false,
+  "message": "Generation quota exceeded",
+  "quota": {
+    "remaining": 0,
+    "resetDate": "2024-02-01T00:00:00.000Z"
+  }
+}
+```
+
 ### Future Endpoints (Planned)
 - `/api/v1/users` - User management
-- `/api/v1/generate` - AI generation endpoints
 - `/api/v1/subscriptions` - Subscription management
 
 ## 🔒 Security Features

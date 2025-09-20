@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import healthRouter from './health';
 import authRouter from './auth';
+import generateRouter from './generate';
 
 // Create main router
 const router = Router();
@@ -11,9 +12,11 @@ router.use('/health', healthRouter);
 // Authentication routes
 router.use('/auth', authRouter);
 
+// Image generation routes
+router.use('/generate', generateRouter);
+
 // Future route modules will be mounted here
 // router.use('/users', usersRouter);
-// router.use('/generate', generateRouter);
 // router.use('/subscriptions', subscriptionsRouter);
 
 // API information endpoint
@@ -26,9 +29,9 @@ router.get('/', (req, res) => {
     endpoints: {
       health: '/api/v1/health',
       auth: '/api/v1/auth',
+      generate: '/api/v1/generate',
       // Future endpoints will be listed here
       // users: '/api/v1/users',
-      // generate: '/api/v1/generate',
       // subscriptions: '/api/v1/subscriptions'
     }
   });

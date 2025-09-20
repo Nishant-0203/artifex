@@ -39,6 +39,11 @@ export const validate = (schema: {
   };
 };
 
+// Alternative validation middleware for single schema (typically body validation)
+export const validateRequest = (schema: ZodSchema) => {
+  return validate({ body: schema });
+};
+
 // Common validation schemas
 export const commonSchemas = {
   // MongoDB ObjectId validation
