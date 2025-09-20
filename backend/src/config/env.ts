@@ -20,6 +20,24 @@ const envSchema = z.object({
   JWT_SECRET: z.string().optional(),
   JWT_EXPIRES_IN: z.string().default('7d'),
   
+  // Google Gemini Configuration
+  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required for image generation'),
+  GEMINI_MODEL: z.string().default('gemini-2.0-flash-exp'),
+  GEMINI_MAX_OUTPUT_TOKENS: z.string().default('8192').transform((val) => parseInt(val, 10)),
+  GEMINI_TEMPERATURE: z.string().default('0.9').transform((val) => parseFloat(val)),
+  
+  // Image Generation Configuration
+  IMAGE_UPLOAD_MAX_SIZE: z.string().default('10485760').transform((val) => parseInt(val, 10)), // 10MB
+  IMAGE_UPLOAD_MAX_FILES: z.string().default('5').transform((val) => parseInt(val, 10)),
+  IMAGE_TEMP_DIR: z.string().default('./temp/uploads'),
+  IMAGE_STORAGE_DIR: z.string().default('./storage/images'),
+  IMAGE_CLEANUP_INTERVAL: z.string().default('3600000').transform((val) => parseInt(val, 10)), // 1 hour
+  
+  // Quota and Subscription Settings
+  FREE_TIER_MONTHLY_LIMIT: z.string().default('10').transform((val) => parseInt(val, 10)),
+  PLUS_TIER_MONTHLY_LIMIT: z.string().default('100').transform((val) => parseInt(val, 10)),
+  PRO_TIER_MONTHLY_LIMIT: z.string().default('1000').transform((val) => parseInt(val, 10)),
+  
   // API Keys (optional for future use)
   GOOGLE_API_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
@@ -68,6 +86,28 @@ export const appConfig = {
     clerkSecretKey: config.CLERK_SECRET_KEY,
     clerkPublishableKey: config.CLERK_PUBLISHABLE_KEY,
     clerkWebhookSecret: config.CLERK_WEBHOOK_SECRET,
+  },
+  gemini: {
+    apiKey: config.GEMINI_API_KEY,
+    model: config.GEMINI_MODEL,
+    maxOutputTokens: config.GEMINI_MAX_OUTPUT_TOKENS,
+    temperature: config.GEMINI_TEMPERATURE,
+  },
+  imageGeneration: {
+    upload: {
+      maxSize: config.IMAGE_UPLOAD_MAX_SIZE,
+      maxFiles: config.IMAGE_UPLOAD_MAX_FILES,
+      tempDir: config.IMAGE_TEMP_DIR,
+      storageDir: config.IMAGE_STORAGE_DIR,
+    },
+    cleanup: {
+      interval: config.IMAGE_CLEANUP_INTERVAL,
+    },
+    quotas: {
+      free: config.FREE_TIER_MONTHLY_LIMIT,
+      plus: config.PLUS_TIER_MONTHLY_LIMIT,
+      pro: config.PRO_TIER_MONTHLY_LIMIT,
+    },
   },
   apis: {
     clerk: config.CLERK_SECRET_KEY,

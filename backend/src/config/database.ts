@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { config } from '@/config/env';
 import { logger } from '@/utils/logger';
+import { initializeModels } from '../models';
 
 // Connection state tracking
 let isConnected = false;
@@ -25,6 +26,10 @@ export const connectDB = async (): Promise<void> => {
     await mongoose.connect(config.MONGODB_URI, options);
     isConnected = true;
     logger.info('✅ Connected to MongoDB');
+
+    // Initialize models and their relationships
+    await initializeModels();
+    logger.info('📋 Database models initialized');
 
   } catch (error) {
     logger.error('❌ MongoDB connection error:', error as Error);
