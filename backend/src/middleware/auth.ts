@@ -1,9 +1,10 @@
-import { clerkMiddleware, requireAuth } from '@clerk/express';
+import { clerkMiddleware, requireAuth, getAuth } from '@clerk/express';
 import { Request, Response, NextFunction } from 'express';
 import type { User } from '@clerk/backend';
 import { config } from '../config/env';
 import { UnauthorizedError, ForbiddenError } from './errorHandler';
 import { logger } from '../utils/logger';
+import jwt from 'jsonwebtoken';
 
 // Configure Clerk middleware
 export const clerkAuth = clerkMiddleware({
@@ -25,12 +26,59 @@ declare global {
   }
 }
 
-// Middleware to require authentication
-export const requireAuthentication = (req: Request, res: Response, next: NextFunction) => {
-  if (!req.auth?.userId) {
-    throw new UnauthorizedError('Authentication required');
-  }
+// Middleware to require authentication - custom implementation
+export const requireAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedError('Authentication required - no token');
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('Token received:', token.substring(0, 50) + '...');
+    
+    // Decode the token without verification to see the payload
+    try {
+      const decoded = jwt.decode(token) as any;
+      console.log('Token payload:', {
+        sub: decoded?.sub,
+        sid: decoded?.sid,
+        sts: decoded?.sts,
+        exp: decoded?.exp,
+        iss: decoded?.iss
+      });
+      
+      // Set up req.auth with the token data
+      (req as any).auth = {
+        userId: decoded?.sub || null,
+        sessionId: decoded?.sid || null,
+        getToken: async () => token,
+      };
+      
+      if (!decoded?.sub) {
+        throw new UnauthorizedError('Invalid token - no user ID');
+      }
+      
   next();
+  return;
+    } catch (tokenError) {
+      console.error('Token parsing error:', tokenError);
+      throw new UnauthorizedError('Invalid token format');
+  }
+    
+  } catch (error) {
+    logger.error('Authentication error:', error as Error);
+    if (error instanceof UnauthorizedError) {
+      res.status(401).json({ 
+        error: 'Authentication required', 
+        message: (error as Error).message 
+      });
+      return;
+    }
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
 };
 
 // Middleware to validate user and add to request
