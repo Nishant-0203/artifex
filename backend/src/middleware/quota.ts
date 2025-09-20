@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserModel } from '../models';
 import { DatabaseUtils } from '../utils/database';
-import { SUBSCRIPTION_QUOTAS } from '../types';
+import { SUBSCRIPTION_QUOTAS, QuotaInfo, QuotaValidationResult } from '../types';
 import { logger } from '../utils/logger';
 
 // Extend Express Request interface for quota middleware
@@ -14,25 +14,6 @@ declare global {
   }
 }
 
-export interface QuotaInfo {
-  userId: string;
-  subscriptionTier: 'free' | 'plus' | 'pro';
-  monthlyUsage: number;
-  monthlyLimit: number;
-  remainingQuota: number;
-  quotaResetDate: Date;
-  quotaPercentageUsed: number;
-  canGenerate: boolean;
-}
-
-export interface QuotaValidationResult {
-  allowed: boolean;
-  reason?: string;
-  requiredCredits: number;
-  quotaInfo: QuotaInfo;
-  upgradeRequired?: boolean;
-  nextTier?: 'plus' | 'pro';
-}
 
 export interface QuotaCheckOptions {
   credits?: number;
@@ -273,7 +254,10 @@ export const getQuotaInfo = async (userId: string, user?: any): Promise<QuotaInf
     remainingQuota,
     quotaResetDate: user.quotaResetDate,
     quotaPercentageUsed,
-    canGenerate: user.canGenerateImages(1)
+    canGenerate: user.canGenerateImages(1),
+    // Add convenience aliases for orchestrator compatibility
+    remaining: remainingQuota,
+    resetDate: user.quotaResetDate
   };
 };
 

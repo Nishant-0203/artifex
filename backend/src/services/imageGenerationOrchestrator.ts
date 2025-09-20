@@ -556,7 +556,7 @@ export class ImageGenerationOrchestrator {
     type: ImageGenerationType
   ): Promise<any> {
     const cost = QuotaUtils.calculateGenerationCost(type, {
-      quality: context.request.quality,
+      quality: context.request.quality === 'ultra' ? 'hd' : context.request.quality as 'standard' | 'hd',
       batchSize: context.request.batchSize || 1,
       aspectRatio: context.request.aspectRatio,
       style: context.request.style
@@ -571,7 +571,7 @@ export class ImageGenerationOrchestrator {
       style: context.request.style,
       aspectRatio: context.request.aspectRatio,
       quality: context.request.quality === 'ultra' ? 'hd' : context.request.quality, // Map ultra to hd for mongoose schema
-      model: 'gemini-2.0-flash-exp',
+      modelName: 'gemini-2.0-flash-exp',
       seed: context.request.seed,
       steps: context.request.steps,
       guidance: context.request.guidance,

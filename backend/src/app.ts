@@ -4,11 +4,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { v4 as uuid } from 'uuid';
-import { config } from '@/config/env';
-import { errorHandler, notFoundHandler } from '@/middleware/errorHandler';
-import { clerkAuth } from '@/middleware/auth';
-import { logger } from '@/utils/logger';
-import routes from '@/routes';
+import { config } from './config/env';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { clerkAuth } from './middleware/auth';
+import { logger } from './utils/logger';
+import routes from './routes';
 
 // Extend Express Request interface
 declare global {

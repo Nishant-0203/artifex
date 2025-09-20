@@ -18,7 +18,7 @@ export interface ImageGenerationDocument extends BaseDocument {
   style?: string;
   aspectRatio: string;
   quality: 'standard' | 'hd';
-  model: string;
+  modelName: string; // Changed from 'model' to avoid conflict
   seed?: number;
   steps?: number;
   guidance?: number;
@@ -191,10 +191,10 @@ const imageGenerationSchemaDefinition = {
     enum: ['standard', 'hd'],
     default: 'standard'
   },
-  model: {
+  modelName: {
     type: String,
     required: [true, 'Model is required'],
-    enum: ['dall-e-2', 'dall-e-3', 'stable-diffusion', 'midjourney'],
+    enum: ['dall-e-2', 'dall-e-3', 'stable-diffusion', 'midjourney', 'gemini-2.0-flash-exp'],
     default: 'dall-e-3'
   },
   seed: {
@@ -243,7 +243,7 @@ const imageGenerationSchemaDefinition = {
     type: metadataSchema,
     required: true,
     default: () => ({
-      model: 'dall-e-3',
+      model: 'gemini-2.0-flash-exp',
       version: '1.0',
       parameters: {}
     })
@@ -262,7 +262,7 @@ imageGenerationSchema.index({ userId: 1, status: 1 });
 imageGenerationSchema.index({ userId: 1, createdAt: -1 });
 imageGenerationSchema.index({ status: 1, createdAt: -1 });
 imageGenerationSchema.index({ type: 1, status: 1 });
-imageGenerationSchema.index({ model: 1, status: 1 });
+imageGenerationSchema.index({ modelName: 1, status: 1 });
 imageGenerationSchema.index({ createdAt: -1 });
 
 // Instance methods

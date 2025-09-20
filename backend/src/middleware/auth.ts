@@ -1,14 +1,14 @@
 import { clerkMiddleware, requireAuth } from '@clerk/express';
 import { Request, Response, NextFunction } from 'express';
-import type { User as ClerkUser } from '@clerk/types';
-import { config } from '@/config/env';
-import { UnauthorizedError, ForbiddenError } from '@/middleware/errorHandler';
-import { logger } from '@/utils/logger';
+import type { User } from '@clerk/backend';
+import { config } from '../config/env';
+import { UnauthorizedError, ForbiddenError } from './errorHandler';
+import { logger } from '../utils/logger';
 
 // Configure Clerk middleware
 export const clerkAuth = clerkMiddleware({
-  secretKey: config.auth.clerkSecretKey,
-  publishableKey: config.auth.clerkPublishableKey,
+  secretKey: config.CLERK_SECRET_KEY,
+  publishableKey: config.CLERK_PUBLISHABLE_KEY,
 });
 
 // Extend Express Request interface for Clerk
@@ -17,7 +17,7 @@ declare global {
     interface Request {
       auth?: {
         userId?: string | null;
-        user?: ClerkUser;
+        user?: User;
         sessionId?: string | null;
         getToken?: () => Promise<string | null>;
       };

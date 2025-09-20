@@ -1,7 +1,7 @@
-import app from '@/app';
-import { connectDB, disconnectDB } from '@/config/database';
-import { config } from '@/config/env';
-import { logger } from '@/utils/logger';
+import app from './app';
+import { connectDB, disconnectDB } from './config/database';
+import { config } from './config/env';
+import { logger } from './utils/logger';
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {

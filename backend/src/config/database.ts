@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { config } from '@/config/env';
-import { logger } from '@/utils/logger';
+import { config } from './env';
+import { logger } from '../utils/logger';
 import { initializeModels } from '../models';
 
 // Connection state tracking

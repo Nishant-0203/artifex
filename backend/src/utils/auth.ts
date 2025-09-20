@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import type { User as ClerkUser } from '@clerk/types';
-import { UnauthorizedError, ForbiddenError, ValidationError } from '@/middleware/errorHandler';
-import { logger } from '@/utils/logger';
-import { SubscriptionTier, UserRole } from '@/types';
+import type { User } from '@clerk/backend';
+import { UnauthorizedError, ForbiddenError, ValidationError } from '../middleware/errorHandler';
+import { logger } from './logger';
+import { SubscriptionTier, UserRole } from '../types';
 
 // Protected route wrapper
 export const requireAuth = (
@@ -87,7 +87,7 @@ export class AuthUtils {
   }
 
   // Format user response data
-  static formatUserResponse(userId: string, user?: ClerkUser) {
+  static formatUserResponse(userId: string, user?: User) {
     return {
       id: userId,
       email: user?.emailAddresses?.[0]?.emailAddress || '',
@@ -106,9 +106,9 @@ export class AuthUtils {
   }
 
   // Check if user email is verified
-  static isEmailVerified(user?: ClerkUser): boolean {
+  static isEmailVerified(user?: User): boolean {
     if (!user?.emailAddresses?.length) return false;
-    return user.emailAddresses.some(email => email.verification?.status === 'verified');
+    return user.emailAddresses.some((email: any) => email.verification?.status === 'verified');
   }
 
   // Rate limiting by user

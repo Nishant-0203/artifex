@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UserModel, SubscriptionModel } from '../models';
 import { logger } from '../utils/logger';
 import { getAuthenticatedUserId } from './auth';
+import { SubscriptionInfo, TierPermissions } from '../types';
 
 // Extend Express Request interface for subscription middleware
 declare global {
@@ -13,34 +14,6 @@ declare global {
   }
 }
 
-export interface SubscriptionInfo {
-  userId: string;
-  tier: 'free' | 'plus' | 'pro';
-  status: 'active' | 'inactive' | 'trialing' | 'past_due' | 'canceled';
-  isActive: boolean;
-  isInTrial: boolean;
-  hasExpired: boolean;
-  currentPeriodEnd?: Date;
-  trialEnd?: Date;
-  clerkSubscriptionId?: string;
-  clerkPlanId?: string;
-  features: string[];
-  permissions: TierPermissions;
-}
-
-export interface TierPermissions {
-  maxImageGenerations: number;
-  allowsHighResolution: boolean;
-  allowsAdvancedFeatures: boolean;
-  allowsCommercialUse: boolean;
-  allowsAPIAccess: boolean;
-  allowsPriorityProcessing: boolean;
-  maxConcurrentGenerations: number;
-  allowsCustomModels: boolean;
-  allowsBatchProcessing: boolean;
-  allowsImageUpscaling: boolean;
-}
-
 export interface SubscriptionValidationResult {
   valid: boolean;
   subscription: SubscriptionInfo;
@@ -48,6 +21,24 @@ export interface SubscriptionValidationResult {
   upgradeRequired?: boolean;
   recommendedTier?: 'plus' | 'pro';
 }
+
+// Map Clerk subscription status to our internal status
+const mapSubscriptionStatus = (clerkStatus: any): 'active' | 'inactive' | 'trialing' | 'past_due' | 'canceled' => {
+  switch (clerkStatus) {
+    case 'active':
+      return 'active';
+    case 'trialing':
+      return 'trialing';
+    case 'past_due':
+      return 'past_due';
+    case 'canceled':
+      return 'canceled';
+    case 'incomplete':
+    case 'unpaid':
+    default:
+      return 'inactive';
+  }
+};
 
 // Tier permission configurations
 const TIER_PERMISSIONS: Record<string, TierPermissions> = {
@@ -115,7 +106,7 @@ export const validateSubscription = () => {
       const subscriptionInfo: SubscriptionInfo = {
         userId: user.id,
         tier: user.subscriptionTier,
-        status: subscription?.status || 'inactive',
+        status: mapSubscriptionStatus(subscription?.status) || 'inactive',
         isActive: subscription?.isActive() || false,
         isInTrial: subscription?.isInTrial() || false,
         hasExpired: subscription?.hasExpired() || false,
@@ -390,7 +381,7 @@ export const getSubscriptionStatus = async (req: Request, res: Response): Promis
     const subscriptionInfo: SubscriptionInfo = {
       userId: user.id,
       tier: user.subscriptionTier,
-      status: subscription?.status || 'inactive',
+      status: mapSubscriptionStatus(subscription?.status) || 'inactive',
       isActive: subscription?.isActive() || false,
       isInTrial: subscription?.isInTrial() || false,
       hasExpired: subscription?.hasExpired() || false,

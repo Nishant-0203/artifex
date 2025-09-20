@@ -221,7 +221,10 @@ export class QuotaUtils {
       remainingQuota,
       quotaResetDate: user.quotaResetDate,
       quotaPercentageUsed,
-      canGenerate: user.canGenerateImages(1)
+      canGenerate: user.canGenerateImages(1),
+      // Add convenience aliases for orchestrator compatibility
+      remaining: remainingQuota,
+      resetDate: user.quotaResetDate
     };
   }
   

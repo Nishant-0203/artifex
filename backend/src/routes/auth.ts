@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { requireAuthentication, validateUser } from '@/middleware/auth';
-import { AuthUtils } from '@/utils/auth';
-import { asyncHandler } from '@/utils/asyncHandler';
-import { ApiResponse } from '@/types';
+import { requireAuthentication, validateUser } from '../middleware/auth';
+import { AuthUtils } from '../utils/auth';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiResponse } from '../types';
 
 const router = Router();
 

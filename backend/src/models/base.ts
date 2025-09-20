@@ -14,8 +14,8 @@ export const baseSchemaOptions: SchemaOptions = {
   toJSON: {
     virtuals: true,
     transform: (doc, ret) => {
-      delete ret._id;
-      delete ret.__v;
+      delete (ret as any)._id;
+      delete (ret as any).__v;
       if ('isDeleted' in ret) delete ret.isDeleted;
       if ('deletedAt' in ret) delete ret.deletedAt;
       return ret;
@@ -24,8 +24,8 @@ export const baseSchemaOptions: SchemaOptions = {
   toObject: {
     virtuals: true,
     transform: (doc, ret) => {
-      delete ret._id;
-      delete ret.__v;
+      delete (ret as any)._id;
+      delete (ret as any).__v;
       return ret;
     }
   }

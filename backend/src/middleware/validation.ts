@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodError, ZodSchema } from 'zod';
-import { ValidationError } from '@/middleware/errorHandler';
+import { ValidationError } from './errorHandler';
 
 // Validation middleware factory
 export const validate = (schema: {
