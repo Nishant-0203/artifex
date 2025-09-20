@@ -276,10 +276,13 @@ export class ImageProcessingService {
       const colors = new Map<string, number>();
       const step = 4; // Skip some pixels for performance
       
-      for (let i = 0; i < data.length; i += info.channels * step) {
+      for (let i = 0; i < data.length - info.channels; i += info.channels * step) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
+        
+        // Ensure we have valid RGB values
+        if (r === undefined || g === undefined || b === undefined) continue;
         
         // Skip very dark or very light colors
         if ((r + g + b) < 30 || (r + g + b) > 720) continue;
@@ -365,15 +368,24 @@ export class ImageProcessingService {
         }
       }
 
-      return {
+      const result: {
+        webp: Buffer;
+        jpeg: Buffer;
+        avif?: Buffer;
+        metadata: {
+          originalSize: number;
+          webpSize: number;
+          jpegSize: number;
+          avifSize?: number;
+          compressionStats: Record<string, number>;
+        };
+      } = {
         webp: webpBuffer,
         jpeg: jpegBuffer,
-        avif: avifBuffer,
         metadata: {
           originalSize,
           webpSize: webpBuffer.length,
           jpegSize: jpegBuffer.length,
-          avifSize,
           compressionStats: {
             webpCompression: originalSize / webpBuffer.length,
             jpegCompression: originalSize / jpegBuffer.length,
@@ -381,6 +393,13 @@ export class ImageProcessingService {
           }
         }
       };
+
+      if (avifBuffer) {
+        result.avif = avifBuffer;
+        result.metadata.avifSize = avifSize;
+      }
+
+      return result;
 
     } catch (error) {
       throw new ImageProcessingError(

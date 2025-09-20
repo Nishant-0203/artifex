@@ -555,12 +555,22 @@ export class ImageGenerationOrchestrator {
     context: GenerationContext,
     type: ImageGenerationType
   ): Promise<any> {
-    const cost = QuotaUtils.calculateGenerationCost(type, {
+    const costOptions: {
+      quality: 'standard' | 'hd';
+      batchSize: number;
+      aspectRatio: string;
+      style?: string;
+    } = {
       quality: context.request.quality === 'ultra' ? 'hd' : context.request.quality as 'standard' | 'hd',
       batchSize: context.request.batchSize || 1,
-      aspectRatio: context.request.aspectRatio,
-      style: context.request.style
-    });
+      aspectRatio: context.request.aspectRatio
+    };
+
+    if (context.request.style) {
+      costOptions.style = context.request.style;
+    }
+
+    const cost = QuotaUtils.calculateGenerationCost(type, costOptions);
 
     const generation = new ImageGenerationModel({
       userId: context.userId,

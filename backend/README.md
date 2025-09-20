@@ -1,53 +1,603 @@
-# Artifex Backend API
+# Artifex Backend API Documentation
 
-A robust Node.js TypeScript backend API server for the Artifex application, built with Express.js, MongoDB, and comprehensive middleware for security, validation, and error handling.
+A comprehensive REST API for AI-powered image generation with authentication, subscription management, and advanced image processing capabilities.
 
-## 🚀 Features
+## Table of Contents
+- [Overview](#overview)
+- [Authentication](#authentication)
+- [API Endpoints](#api-endpoints)
+  - [Health & System](#health--system)
+  - [Authentication](#authentication-endpoints)
+  - [Image Generation](#image-generation)
+- [Error Handling](#error-handling)
+- [Rate Limiting & Subscriptions](#rate-limiting--subscriptions)
+- [Environment Setup](#environment-setup)
 
-- **TypeScript**: Full TypeScript support with strict type checking
-- **Express.js**: Fast, unopinionated web framework for Node.js
-- **MongoDB**: Document database with Mongoose ODM
-- **Security**: Helmet.js for security headers, CORS configuration, rate limiting
-- **Validation**: Zod-based request validation with TypeScript integration
-- **Error Handling**: Comprehensive error handling with custom error classes
-- **Logging**: Structured logging with development and production modes
-- **Health Checks**: Built-in health monitoring endpoints
-- **Environment Configuration**: Type-safe environment variable validation
+## Overview
 
-## 📋 Prerequisites
+The Artifex Backend API provides:
+- **AI-Powered Image Generation**: Text-to-image, image-to-image, multi-image composition, and image refinement
+- **Clerk Authentication**: Secure user authentication and session management
+- **Subscription Management**: Tiered access with usage quotas
+- **File Processing**: Advanced image processing with Sharp and Multer
+- **MongoDB Integration**: Persistent storage for user data and generation history
 
-Before running this project, make sure you have the following installed:
+**Base URL**: `http://localhost:3001/api`
 
-- Node.js (>=18.0.0)
-- npm (>=8.0.0) or yarn
-- MongoDB (local installation or MongoDB Atlas)
+## Authentication
 
-## 🛠️ Installation
+All protected endpoints require Clerk authentication. Include the JWT token in the Authorization header:
 
-1. **Clone the repository and navigate to the backend directory:**
-   ```bash
-   cd d:/artifex/backend
-   ```
+```
+Authorization: Bearer <clerk_jwt_token>
+```
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+The API uses Clerk for user authentication and session management. Ensure you have a valid Clerk session token for protected routes.
 
-3. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit the `.env` file with your configuration:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   MONGODB_URI=mongodb://localhost:27017/artifex
-   CORS_ORIGIN=http://localhost:3000
-   ```
+## API Endpoints
 
-4. **Start MongoDB:**
+### Health & System
+
+#### GET `/health`
+Check API health and system status.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Server is healthy",
+  "data": {
+    "uptime": 3600.123,
+    "timestamp": "2024-01-01T12:00:00.000Z",
+    "memory": {
+      "used": "45.2 MB",
+      "total": "128 MB",
+      "percentage": 35.3
+    },
+    "database": {
+      "status": "connected",
+      "responseTime": "2ms"
+    },
+    "services": {
+      "gemini": "operational",
+      "clerk": "operational"
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### Authentication Endpoints
+
+#### GET `/auth/me`
+Get authenticated user profile information.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "User profile retrieved successfully",
+  "data": {
+    "user": {
+      "id": "user_123456",
+      "email": "user@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "profileImage": "https://...",
+      "createdAt": "2024-01-01T12:00:00.000Z"
+    },
+    "session": {
+      "sessionId": "sess_123456",
+      "isActive": true,
+      "emailVerified": true
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### GET `/auth/validate`
+Validate current user session.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Session is valid",
+  "data": {
+    "valid": true,
+    "userId": "user_123456",
+    "sessionId": "sess_123456",
+    "emailVerified": true,
+    "timestamp": "2024-01-01T12:00:00.000Z"
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### GET `/auth/status`
+Get user authentication status (no authentication required).
+
+**Authentication:** Optional
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "User is authenticated",
+  "data": {
+    "authenticated": true,
+    "user": {
+      "userId": "user_123456",
+      "sessionId": "sess_123456",
+      "emailVerified": true
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### POST `/auth/logout`
+Process user logout request.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Logout request processed",
+  "data": {
+    "userId": "user_123456",
+    "logoutTime": "2024-01-01T12:00:00.000Z"
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### GET `/auth/permissions`
+Get user permissions and subscription information.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "User permissions retrieved successfully",
+  "data": {
+    "userId": "user_123456",
+    "role": "user",
+    "subscription": {
+      "tier": "free",
+      "hasPremiumAccess": false,
+      "rateLimit": {
+        "requests": 10,
+        "window": "1h"
+      }
+    },
+    "permissions": {
+      "isAdmin": false,
+      "canAccessPremiumFeatures": false
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### POST `/auth/refresh-token`
+Refresh user authentication token.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Token refreshed successfully",
+  "data": {
+    "tokenAvailable": true,
+    "expiresIn": "1h"
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### Image Generation
+
+All image generation endpoints require authentication and are subject to subscription-based rate limiting.
+
+#### POST `/generate/text-to-image`
+Generate an image from a text prompt using AI.
+
+**Authentication:** Required  
+**Content-Type:** `application/json`
+
+**Request Body:**
+```json
+{
+  "prompt": "A beautiful sunset over mountains",
+  "style": "realistic",
+  "quality": "high",
+  "dimensions": {
+    "width": 1024,
+    "height": 1024
+  },
+  "negativePrompt": "blurry, low quality",
+  "seed": 12345
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Image generated successfully",
+  "data": {
+    "generationId": "gen_123456",
+    "imageUrl": "https://...",
+    "metadata": {
+      "prompt": "A beautiful sunset over mountains",
+      "style": "realistic",
+      "dimensions": {
+        "width": 1024,
+        "height": 1024
+      },
+      "processingTime": "3.2s",
+      "model": "gemini-2.5-flash"
+    },
+    "quotaUsed": {
+      "current": 5,
+      "limit": 10,
+      "remaining": 5
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### POST `/generate/image-to-image`
+Transform an existing image using a text prompt.
+
+**Authentication:** Required  
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `image`: File (required) - Source image file
+- `prompt`: String (required) - Transformation description
+- `strength`: Number (optional) - Transformation strength (0.1-1.0)
+- `style`: String (optional) - Style to apply
+- `quality`: String (optional) - Output quality
+
+**Example cURL:**
+```bash
+curl -X POST http://localhost:3001/api/generate/image-to-image \
+  -H "Authorization: Bearer <clerk_jwt_token>" \
+  -F "image=@/path/to/image.jpg" \
+  -F "prompt=Transform this into a watercolor painting" \
+  -F "strength=0.7" \
+  -F "style=artistic"
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Image transformation completed successfully",
+  "data": {
+    "generationId": "gen_123457",
+    "originalImageUrl": "https://...",
+    "transformedImageUrl": "https://...",
+    "metadata": {
+      "prompt": "Transform this into a watercolor painting",
+      "strength": 0.7,
+      "style": "artistic",
+      "processingTime": "4.1s"
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### POST `/generate/multi-image`
+Compose multiple images into a single output.
+
+**Authentication:** Required  
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `images[]`: Files (required) - Multiple image files (2-4 images)
+- `compositionType`: String (required) - "collage", "blend", "sequence"
+- `prompt`: String (required) - Composition description
+- `layout`: String (optional) - Layout preference
+- `blendMode`: String (optional) - Blending method for blend type
+
+**Example cURL:**
+```bash
+curl -X POST http://localhost:3001/api/generate/multi-image \
+  -H "Authorization: Bearer <clerk_jwt_token>" \
+  -F "images[]=@/path/to/image1.jpg" \
+  -F "images[]=@/path/to/image2.jpg" \
+  -F "compositionType=collage" \
+  -F "prompt=Create a beautiful collage of these landscapes"
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Multi-image composition completed successfully",
+  "data": {
+    "generationId": "gen_123458",
+    "composedImageUrl": "https://...",
+    "sourceImages": [
+      "https://...",
+      "https://..."
+    ],
+    "metadata": {
+      "compositionType": "collage",
+      "imageCount": 2,
+      "processingTime": "5.8s"
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### POST `/generate/refine`
+Refine an existing image with detailed adjustments.
+
+**Authentication:** Required  
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `image`: File (required) - Source image file
+- `refinementType`: String (required) - "enhance", "style", "details"
+- `adjustments`: String (required) - JSON string of adjustments
+- `intensity`: Number (optional) - Refinement intensity (0.1-1.0)
+
+**Example Adjustments:**
+```json
+{
+  "brightness": 0.1,
+  "contrast": 0.2,
+  "saturation": 0.15,
+  "sharpness": 0.3,
+  "denoise": true
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Image refinement completed successfully",
+  "data": {
+    "generationId": "gen_123459",
+    "originalImageUrl": "https://...",
+    "refinedImageUrl": "https://...",
+    "metadata": {
+      "refinementType": "enhance",
+      "adjustments": {
+        "brightness": 0.1,
+        "contrast": 0.2,
+        "saturation": 0.15
+      },
+      "processingTime": "2.9s"
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### GET `/generate/history`
+Get user's image generation history.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `page`: Number (optional) - Page number (default: 1)
+- `limit`: Number (optional) - Items per page (default: 20, max: 100)
+- `type`: String (optional) - Filter by generation type
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Generation history retrieved successfully",
+  "data": {
+    "generations": [
+      {
+        "id": "gen_123456",
+        "type": "text-to-image",
+        "prompt": "A beautiful sunset over mountains",
+        "imageUrl": "https://...",
+        "createdAt": "2024-01-01T12:00:00.000Z",
+        "metadata": {
+          "processingTime": "3.2s",
+          "style": "realistic"
+        }
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 45,
+      "pages": 3
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+#### GET `/generate/quota`
+Get user's current quota status and usage.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Quota status retrieved successfully",
+  "data": {
+    "subscription": {
+      "tier": "free",
+      "status": "active"
+    },
+    "quota": {
+      "textToImage": {
+        "used": 5,
+        "limit": 10,
+        "remaining": 5,
+        "resetsAt": "2024-01-02T00:00:00.000Z"
+      },
+      "imageToImage": {
+        "used": 2,
+        "limit": 5,
+        "remaining": 3,
+        "resetsAt": "2024-01-02T00:00:00.000Z"
+      },
+      "multiImage": {
+        "used": 1,
+        "limit": 3,
+        "remaining": 2,
+        "resetsAt": "2024-01-02T00:00:00.000Z"
+      },
+      "refine": {
+        "used": 0,
+        "limit": 5,
+        "remaining": 5,
+        "resetsAt": "2024-01-02T00:00:00.000Z"
+      }
+    },
+    "usage": {
+      "thisMonth": 8,
+      "thisWeek": 3,
+      "today": 1
+    }
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+## Error Handling
+
+All endpoints return standardized error responses:
+
+```json
+{
+  "status": "error",
+  "message": "Detailed error description",
+  "code": "ERROR_CODE",
+  "details": {
+    "field": "Specific field error",
+    "validation": "Validation details"
+  },
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### Common Error Codes
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `UNAUTHORIZED` | 401 | Invalid or missing authentication token |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+| `VALIDATION_ERROR` | 400 | Request validation failed |
+| `QUOTA_EXCEEDED` | 429 | Subscription quota exceeded |
+| `FILE_TOO_LARGE` | 413 | Uploaded file exceeds size limit |
+| `UNSUPPORTED_FORMAT` | 415 | Unsupported file format |
+| `GENERATION_FAILED` | 500 | AI generation service error |
+| `DATABASE_ERROR` | 500 | Database connection or query error |
+
+## Rate Limiting & Subscriptions
+
+### Subscription Tiers
+
+| Tier | Text-to-Image | Image-to-Image | Multi-Image | Refine | File Size |
+|------|---------------|----------------|-------------|---------|-----------|
+| **Free** | 10/day | 5/day | 3/day | 5/day | 5MB |
+| **Pro** | 100/day | 50/day | 25/day | 50/day | 25MB |
+| **Premium** | 500/day | 200/day | 100/day | 200/day | 50MB |
+
+### File Upload Limits
+
+- **Supported Formats**: JPEG, PNG, WebP, TIFF
+- **Max File Size**: Varies by subscription tier
+- **Max Images per Request**: 4 for multi-image composition
+
+## Environment Setup
+
+### Required Environment Variables
+
+```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/artifex
+
+# Clerk Authentication
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
+
+# Google Gemini AI
+GEMINI_API_KEY=your_gemini_api_key
+
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# File Upload
+UPLOAD_DIR=./uploads
+MAX_FILE_SIZE=52428800
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=3600000
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
+### Installation & Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Start production server
+npm start
+
+# Run database migrations
+npm run migrate
+
+# Seed database
+npm run seed
+```
+
+### Health Check
+
+Before using the API, verify it's running correctly:
+
+```bash
+curl http://localhost:3001/api/health
+```
+
+---
+
+## Support
+
+For issues or questions regarding the API, please check:
+- [API Health Status](http://localhost:3001/api/health)
+- [Clerk Documentation](https://clerk.dev/docs)
+- [Google Gemini API Documentation](https://ai.google.dev/gemini-api/docs)
+
+**Last Updated**: 2024-01-01  
+**API Version**: 1.0.0
    - **Local MongoDB:** Make sure MongoDB service is running
    - **MongoDB Atlas:** Use your Atlas connection string in `MONGODB_URI`
 

@@ -108,9 +108,9 @@ export class FileUploadError extends AppError {
     errorCode: string = 'FILE_UPLOAD_ERROR'
   ) {
     super(message, 400, errorCode);
-    this.fileName = fileName;
-    this.fileSize = fileSize;
-    this.allowedTypes = allowedTypes;
+    if (fileName !== undefined) this.fileName = fileName;
+    if (fileSize !== undefined) this.fileSize = fileSize;
+    if (allowedTypes !== undefined) this.allowedTypes = allowedTypes;
   }
 }
 
@@ -154,7 +154,7 @@ export class ValidationError extends AppError {
     super(message, 400, errorCode);
     this.field = field;
     this.value = value;
-    this.allowedValues = allowedValues;
+    if (allowedValues !== undefined) this.allowedValues = allowedValues;
   }
 }
 
@@ -173,7 +173,7 @@ export class DatabaseError extends AppError {
   ) {
     super(message, 500, errorCode);
     this.operation = operation;
-    this.collection = collection;
+    if (collection !== undefined) this.collection = collection;
   }
 }
 
@@ -445,14 +445,29 @@ export class ErrorResponseFormatter {
     context?: any;
     timestamp: string;
   } {
-    return {
+    const result: {
+      message: string;
+      errorCode: string;
+      statusCode: number;
+      stack?: string;
+      context?: any;
+      timestamp: string;
+    } = {
       message: error.message,
       errorCode: error.errorCode,
       statusCode: error.statusCode,
-      stack: error.stack,
-      context,
       timestamp: new Date().toISOString()
     };
+
+    if (error.stack !== undefined) {
+      result.stack = error.stack;
+    }
+
+    if (context !== undefined) {
+      result.context = context;
+    }
+
+    return result;
   }
 }
 

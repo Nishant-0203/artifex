@@ -22,7 +22,7 @@ export class GeminiImageService {
   private readonly imageModel = 'gemini-2.0-flash-exp';
   
   constructor(apiKey?: string) {
-    const key = apiKey || process.env.GOOGLE_GEMINI_API_KEY;
+    const key = apiKey || process.env.GEMINI_API_KEY;
     
     if (!key) {
       throw new AppError(
@@ -139,7 +139,7 @@ export class GeminiImageService {
           model: this.imageModel,
           quality: request.quality,
           aspectRatio: request.aspectRatio,
-          style: request.style,
+          ...(request.style && { style: request.style }),
           generatedAt: new Date().toISOString(),
           processingTime: mockImageData.processingTime,
           subscriptionTier: request.subscriptionTier
@@ -194,7 +194,7 @@ export class GeminiImageService {
           model: this.imageModel,
           quality: request.quality,
           aspectRatio: request.aspectRatio,
-          style: request.style,
+          ...(request.style && { style: request.style }),
           generatedAt: new Date().toISOString(),
           processingTime: mockImageData.processingTime,
           subscriptionTier: request.subscriptionTier,
@@ -259,7 +259,7 @@ export class GeminiImageService {
           model: this.imageModel,
           quality: request.quality,
           aspectRatio: request.aspectRatio,
-          style: request.style,
+          ...(request.style && { style: request.style }),
           generatedAt: new Date().toISOString(),
           processingTime: mockImageData.processingTime,
           subscriptionTier: request.subscriptionTier,
@@ -314,7 +314,7 @@ export class GeminiImageService {
           model: this.imageModel,
           quality: request.quality,
           aspectRatio: request.aspectRatio,
-          style: request.style,
+          ...(request.style && { style: request.style }),
           generatedAt: new Date().toISOString(),
           processingTime: mockImageData.processingTime,
           subscriptionTier: request.subscriptionTier,
@@ -427,7 +427,12 @@ export class GeminiImageService {
       data = imageData.toString('base64');
     } else {
       // Assume it's already base64 or a data URL
-      data = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
+      if (imageData.startsWith('data:')) {
+        const base64Data = imageData.split(',')[1];
+        data = base64Data || imageData;
+      } else {
+        data = imageData;
+      }
     }
     
     return {

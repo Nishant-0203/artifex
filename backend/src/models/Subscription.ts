@@ -95,25 +95,20 @@ const subscriptionSchemaDefinition = {
     index: true
   },
   canceledAt: {
-    type: Date,
-    default: null
+    type: Date
   },
   trialStart: {
-    type: Date,
-    default: null
+    type: Date
   },
   trialEnd: {
     type: Date,
-    default: null,
     index: true
   },
   lastPaymentAt: {
-    type: Date,
-    default: null
+    type: Date
   },
   nextPaymentAt: {
     type: Date,
-    default: null,
     index: true
   },
   paymentFailures: {
@@ -294,9 +289,19 @@ subscriptionSchema.statics.updateFromClerk = async function(
   subscription.currentPeriodStart = new Date(clerkData.current_period_start * 1000);
   subscription.currentPeriodEnd = new Date(clerkData.current_period_end * 1000);
   subscription.cancelAtPeriodEnd = clerkData.cancel_at_period_end;
-  subscription.canceledAt = clerkData.canceled_at ? new Date(clerkData.canceled_at * 1000) : undefined;
-  subscription.trialStart = clerkData.trial_start ? new Date(clerkData.trial_start * 1000) : undefined;
-  subscription.trialEnd = clerkData.trial_end ? new Date(clerkData.trial_end * 1000) : undefined;
+  
+  if (clerkData.canceled_at) {
+    subscription.canceledAt = new Date(clerkData.canceled_at * 1000);
+  }
+  
+  if (clerkData.trial_start) {
+    subscription.trialStart = new Date(clerkData.trial_start * 1000);
+  }
+  
+  if (clerkData.trial_end) {
+    subscription.trialEnd = new Date(clerkData.trial_end * 1000);
+  }
+  
   subscription.metadata = { ...subscription.metadata, ...clerkData.metadata };
 
   return subscription.save();

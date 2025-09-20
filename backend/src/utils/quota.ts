@@ -438,10 +438,20 @@ export class QuotaUtils {
     
     // Calculate total cost
     for (const request of requests) {
-      const cost = this.calculateGenerationCost(request.type, {
-        quality: request.quality,
-        style: request.style
-      });
+      const costOptions: {
+        quality?: 'standard' | 'hd';
+        style?: string;
+      } = {};
+
+      if (request.quality !== undefined) {
+        costOptions.quality = request.quality;
+      }
+
+      if (request.style !== undefined) {
+        costOptions.style = request.style;
+      }
+
+      const cost = this.calculateGenerationCost(request.type, costOptions);
       totalCost += cost;
     }
     

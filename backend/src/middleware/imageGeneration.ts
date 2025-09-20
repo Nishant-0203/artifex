@@ -84,89 +84,103 @@ const createMulterUpload = (req: AuthenticatedRequest) => {
 /**
  * Middleware for single image upload (image-to-image, refine)
  */
-export const uploadSingleImage = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const uploadSingleImage = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   try {
     const upload = createMulterUpload(req);
     const singleUpload = upload.single('image');
 
-    singleUpload(req, res, async (error) => {
-      if (error) {
-        if (error instanceof multer.MulterError) {
-          if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({
-              success: false,
-              message: `File size exceeds limit of ${getFileSizeLimit(req.user?.subscriptionStatus) / (1024 * 1024)}MB`
-            });
+    singleUpload(req, res, (error) => {
+      // use an async IIFE so the Multer callback remains synchronous (returns void)
+      (async () => {
+        if (error) {
+          if (error instanceof multer.MulterError) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+              res.status(400).json({
+                success: false,
+                message: `File size exceeds limit of ${getFileSizeLimit(req.user?.subscriptionStatus) / (1024 * 1024)}MB`
+              });
+              return;
+            }
+            if (error.code === 'LIMIT_FILE_COUNT') {
+              res.status(400).json({
+                success: false,
+                message: 'Too many files uploaded'
+              });
+              return;
+            }
           }
-          if (error.code === 'LIMIT_FILE_COUNT') {
-            return res.status(400).json({
+
+          logger.error('File upload error', error);
+          res.status(400).json({
+            success: false,
+            message: error.message || 'File upload failed'
+          });
+          return;
+        }
+
+        if (!req.file) {
+          res.status(400).json({
+            success: false,
+            message: 'No image file provided'
+          });
+          return;
+        }
+
+        // Validate image dimensions and format
+        try {
+          const metadata = await sharp(req.file.path).metadata();
+
+          // Check minimum dimensions
+          if (!metadata.width || !metadata.height || metadata.width < 64 || metadata.height < 64) {
+            // Clean up uploaded file
+            fs.unlinkSync(req.file.path);
+            res.status(400).json({
               success: false,
-              message: 'Too many files uploaded'
+              message: 'Image must be at least 64x64 pixels'
             });
+            return;
           }
-        }
-        
-        logger.error('File upload error', error);
-        return res.status(400).json({
-          success: false,
-          message: error.message || 'File upload failed'
-        });
-      }
 
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: 'No image file provided'
-        });
-      }
+          // Check maximum dimensions based on subscription
+          const maxDimension = req.user?.subscriptionStatus === 'pro' ? 4096 : 
+                              req.user?.subscriptionStatus === 'plus' ? 2048 : 1024;
 
-      // Validate image dimensions and format
-      try {
-        const metadata = await sharp(req.file.path).metadata();
-        
-        // Check minimum dimensions
-        if (!metadata.width || !metadata.height || metadata.width < 64 || metadata.height < 64) {
-          // Clean up uploaded file
-          fs.unlinkSync(req.file.path);
-          return res.status(400).json({
-            success: false,
-            message: 'Image must be at least 64x64 pixels'
+          if (metadata.width > maxDimension || metadata.height > maxDimension) {
+            // Clean up uploaded file
+            fs.unlinkSync(req.file.path);
+            res.status(400).json({
+              success: false,
+              message: `Image dimensions must not exceed ${maxDimension}x${maxDimension} pixels`
+            });
+            return;
+          }
+
+          logger.info('Single image uploaded successfully', {
+            filename: req.file.filename,
+            size: req.file.size,
+            dimensions: `${metadata.width}x${metadata.height}`,
+            userId: req.user?.id
           });
-        }
 
-        // Check maximum dimensions based on subscription
-        const maxDimension = req.user?.subscriptionStatus === 'pro' ? 4096 : 
-                            req.user?.subscriptionStatus === 'plus' ? 2048 : 1024;
+          next();
+          return;
+        } catch (imageError) {
+          // Clean up uploaded file if validation fails
+          if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
 
-        if (metadata.width > maxDimension || metadata.height > maxDimension) {
-          // Clean up uploaded file
-          fs.unlinkSync(req.file.path);
-          return res.status(400).json({
+          logger.error('Image validation error', imageError as Error);
+          res.status(400).json({
             success: false,
-            message: `Image dimensions must not exceed ${maxDimension}x${maxDimension} pixels`
+            message: 'Invalid image file'
           });
+          return;
         }
-
-        logger.info('Single image uploaded successfully', {
-          filename: req.file.filename,
-          size: req.file.size,
-          dimensions: `${metadata.width}x${metadata.height}`,
-          userId: req.user?.id
-        });
-
-        next();
-      } catch (imageError) {
-        // Clean up uploaded file if validation fails
-        if (req.file && fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
-        }
-        
-        logger.error('Image validation error', imageError as Error);
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid image file'
-        });
-      }
+      })().catch((e) => {
+        logger.error('Upload processing error', e as Error);
+        res.status(500).json({ success: false, message: 'Internal server error during file upload' });
+      });
     });
   } catch (error) {
     logger.error('Upload middleware error', error as Error);
@@ -180,43 +194,48 @@ export const uploadSingleImage = async (req: AuthenticatedRequest, res: Response
 /**
  * Middleware for multiple image upload (multi-image composition)
  */
-export const uploadMultipleImages = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const uploadMultipleImages = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   try {
     const upload = createMulterUpload(req);
     const multipleUpload = upload.array('images', getFileCountLimit(req.user?.subscriptionStatus));
 
-    multipleUpload(req, res, async (error) => {
-      if (error) {
-        if (error instanceof multer.MulterError) {
-          if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({
-              success: false,
-              message: `File size exceeds limit of ${getFileSizeLimit(req.user?.subscriptionStatus) / (1024 * 1024)}MB`
-            });
+    multipleUpload(req, res, (error) => {
+      (async () => {
+        if (error) {
+          if (error instanceof multer.MulterError) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+              res.status(400).json({
+                success: false,
+                message: `File size exceeds limit of ${getFileSizeLimit(req.user?.subscriptionStatus) / (1024 * 1024)}MB`
+              });
+              return;
+            }
+            if (error.code === 'LIMIT_FILE_COUNT') {
+              res.status(400).json({
+                success: false,
+                message: `Too many files uploaded. Maximum allowed: ${getFileCountLimit(req.user?.subscriptionStatus)}`
+              });
+              return;
+            }
           }
-          if (error.code === 'LIMIT_FILE_COUNT') {
-            return res.status(400).json({
-              success: false,
-              message: `Too many files uploaded. Maximum allowed: ${getFileCountLimit(req.user?.subscriptionStatus)}`
-            });
-          }
-        }
-        
-        logger.error('Multiple file upload error', error);
-        return res.status(400).json({
-          success: false,
-          message: error.message || 'File upload failed'
-        });
-      }
 
-      const files = req.files as Express.Multer.File[];
-      
-      if (!files || files.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'No image files provided'
-        });
-      }
+          logger.error('Multiple file upload error', error);
+          res.status(400).json({
+            success: false,
+            message: error.message || 'File upload failed'
+          });
+          return;
+        }
+
+        const files = req.files as Express.Multer.File[];
+
+        if (!files || files.length === 0) {
+          res.status(400).json({
+            success: false,
+            message: 'No image files provided'
+          });
+          return;
+        }
 
       if (files.length < 2) {
         // Clean up uploaded files
@@ -271,14 +290,15 @@ export const uploadMultipleImages = async (req: AuthenticatedRequest, res: Respo
           }
         }
 
-        logger.info('Multiple images uploaded successfully', {
-          count: files.length,
-          sizes: files.map(f => f.size),
-          userId: req.user?.id
-        });
+          logger.info('Multiple images uploaded successfully', {
+            count: files.length,
+            sizes: files.map(f => f.size),
+            userId: req.user?.id
+          });
 
-        next();
-      } catch (imageError) {
+          next();
+          return;
+        } catch (imageError) {
         // Clean up uploaded files if validation fails
         files.forEach(file => {
           if (fs.existsSync(file.path)) {
@@ -286,12 +306,17 @@ export const uploadMultipleImages = async (req: AuthenticatedRequest, res: Respo
           }
         });
         
-        logger.error('Multiple image validation error', imageError as Error);
-        return res.status(400).json({
-          success: false,
-          message: 'One or more invalid image files'
-        });
-      }
+          logger.error('Multiple image validation error', imageError as Error);
+          res.status(400).json({
+            success: false,
+            message: 'One or more invalid image files'
+          });
+          return;
+        }
+      })().catch((e) => {
+        logger.error('Multiple upload processing error', e as Error);
+        res.status(500).json({ success: false, message: 'Internal server error during file upload' });
+      });
     });
   } catch (error) {
     logger.error('Multiple upload middleware error', error as Error);
@@ -335,16 +360,17 @@ export const cleanupUploadedFiles = (req: Request, res: Response, next: NextFunc
 /**
  * Middleware to validate subscription limits for image generation
  */
-export const validateSubscriptionLimits = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const validateSubscriptionLimits = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user?.id;
     const subscriptionStatus = req.user?.subscriptionStatus;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
+      return;
     }
 
     // Simple quota check - in a real implementation, this would check the database
@@ -364,12 +390,14 @@ export const validateSubscriptionLimits = async (req: AuthenticatedRequest, res:
     });
 
     next();
+    return;
   } catch (error) {
     logger.error('Subscription validation error', error as Error);
     res.status(500).json({
       success: false,
       message: 'Internal server error during subscription validation'
     });
+    return;
   }
 };
 
