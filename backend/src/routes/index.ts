@@ -2,12 +2,20 @@ import { Router } from 'express';
 import healthRouter from './health';
 import authRouter from './auth';
 import generateRouter from './generate';
+import testRouter from './test';
+import connectionTestRouter from './connection-test';
 
 // Create main router
 const router = Router();
 
 // Health check routes
 router.use('/health', healthRouter);
+
+// Test routes
+router.use('/test', testRouter);
+
+// Connection test routes (no auth required)
+router.use('/connection-test', connectionTestRouter);
 
 // Authentication routes
 router.use('/auth', authRouter);
